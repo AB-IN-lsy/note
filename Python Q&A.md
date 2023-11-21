@@ -6,7 +6,9 @@
 
 ## 简介
 
-* 2023.11.1 开始准备可信科目二和科目三，重学Python八股文
+* 2023.11.1 开始准备可信工作级科目二和科目三，重学Python八股文
+* 2023.11.5 通过科二
+* 
 
 ****
 
@@ -1605,3 +1607,1344 @@ print(isinstance(type, type))  # 输出: True
 至于`type`的源码，它是用C语言在Python的内核中实现的，因为Python本身是用C语言写的。这部分代码非常底层，涉及到Python解释器的内部机制，不像普通的Python代码那样容易理解。
 
 如果你对`type`的内部实现感兴趣，你可以查看CPython的源代码。CPython是Python的官方解释器，其源代码在GitHub上是开源的。但是请注意，这需要你有一定的C语言基础和对Python内部工作机制的理解。
+
+****
+
+## Q: @classmethod这些是什么东西
+
+在Python这类面向对象编程语言中，`@classmethod`是一个装饰器，它被用来定义一个类方法。类方法是那种不需要实例化类就可以被调用的方法。它们的第一个参数是类本身，而不是类的实例。这个参数通常被命名为`cls`。
+
+当你使用`@classmethod`装饰器时，你其实是在告诉Python：接下来定义的是一个类方法，它的第一个参数是指向类对象本身的引用，而不是类的实例。这个参数通常命名为`cls`，但它可以是任何名称。
+
+`cls`参数是一个类对象，也就是说，它的类型是元类`type`的实例。在Python中，类本身也是对象，它们是由元类创建的，而默认的元类就是内置的`type`类型。所以当你访问一个类的属性或者调用类方法时，你实际上是在与一个`type`的实例交互。
+
+这里有一个使用`@classmethod`的简单例子：
+
+```python
+class MyClass:
+    count = 0
+
+    def __init__(self):
+        MyClass.count += 1
+
+    @classmethod
+    def get_count(cls):
+        return cls.count
+```
+
+在这个例子中，`get_count`是一个类方法，它返回了类变量`count`的值。注意，即使没有创建`MyClass`的实例，我们也可以调用`get_count`方法。
+
+```python
+# 调用类方法
+print(MyClass.get_count())  # 输出将会是 0
+```
+
+类方法通常用于以下情况：
+
+1. 工厂方法：创建类实例的方法，这些方法需要访问类属性或者其他类方法，但不需要具体实例的属性。
+2. 静态方法：与类相关但不需要访问具体实例属性的方法。它们不需要类或实例作为第一个参数。在Python中，静态方法用`@staticmethod`装饰器来定义。
+3. 修改类状态：如果你需要修改类级别的属性，可以使用类方法。
+
+总的来说，`@classmethod`使得方法更多地与类本身相关联，而不是与类的实例相关。
+
+### Q: 为什么要有@classmethod，类中定义的属性和方法不是公共的吗
+
+在Python中，`@classmethod` 装饰器的作用是声明一个类方法，这意味着该方法属于类而非类的实例。类方法的第一个参数通常命名为 `cls`，它代表着类本身，而不是类的实例。这与普通的实例方法相对，实例方法的第一个参数是 `self`，代表类的一个具体实例。
+
+这里有一些原因和场景，说明为什么 `@classmethod` 是有用的：
+
+1. **工厂方法**：类方法经常被用作工厂方法。这些方法可以返回类的实例，例如，它们可以根据不同的输入参数来创建不同配置的实例。
+
+2. **继承/多态**：在继承关系中，类方法会自动处理方法调用的类是父类还是子类，允许多态。这意味着如果你调用一个类方法，它会使用那个类及其属性，即使它被定义在父类中。
+
+3. **静态上下文**：有时你需要一个方法，它在逻辑上属于类，但不需要类的具体实例。例如，你可能要更新一个类变量或者根据类的某些属性来执行操作。
+
+4. **访问类属性**：类方法可以用来访问或修改类属性，这对于维护类级状态或实现与类整体相关的行为很有用。
+
+要说明 `@classmethod` 的作用，我们可以看一个简单的例子：
+
+```python
+class MyClass:
+    counter = 0
+
+    def __init__(self):
+        MyClass.counter += 1
+
+    @classmethod
+    def instances_created(cls):
+        return cls.counter
+
+# 创建几个实例
+obj1 = MyClass()
+obj2 = MyClass()
+
+# 通过类方法获取创建的实例数量
+print(MyClass.instances_created())  # 输出：2
+```
+
+在这个例子中，`instances_created` 是一个类方法，它返回了创建的实例数量，这个数量是一个类属性。注意，在类方法内部，我们使用 `cls.counter` 而不是 `MyClass.counter`。这样，如果类被继承，子类会使用它自己的 `counter` 属性，而不是父类的。
+
+总的来说，类属性和方法确实是公共的，但 `@classmethod` 提供了一种方法，允许方法操作整个类的状态，而不是某个特定实例的状态。
+
+****
+
+## Q: Python中有没有像Java的@Data一样的注解，能够自动生成getter，setter
+
+Python语言的设计哲学之一是“约定大于配置”，所以它并不直接提供类似Java中的`@Data`注解来自动生成getter和setter方法。不过，Python有几种方式可以达到类似的效果。
+
+1. **属性装饰器 `@property`**：
+   Python提供了`@property`装饰器，可以将类中的方法转换为只读属性。如果你还需要设置属性，可以使用`@<property_name>.setter`装饰器来定义对应的setter方法。
+
+   示例：
+   ```python
+   class MyClass:
+       def __init__(self, value):
+           self._value = value
+   
+       @property
+       def value(self):
+           return self._value
+   
+       @value.setter
+       def value(self, value):
+           self._value = value
+   ```
+
+   在这个例子中，`value`属性是可以被获取和设置的，但它实际上通过`_value`来存储数据，提供了一层封装。
+
+2. **`attrs`库**：
+   `attrs`是一个Python包，可以通过声明类的属性来自动生成许多样板代码，包括初始化方法、`__repr__`、`__eq__`、以及可选的getter和setter方法。
+
+   示例：
+   ```python
+   import attr
+   
+   @attr.s
+   class MyClass:
+       value = attr.ib()
+   
+   obj = MyClass(value=42)
+   print(obj.value)  # 输出: 42
+   obj.value = 7
+   print(obj.value)  # 输出: 7
+   ```
+
+   `attrs`包可以通过简单的装饰器和函数调用自动创建getter和setter。
+
+3. **`dataclasses`模块：**
+
+   Python 3.7 引入了 `dataclass` 模块，这是一种装饰器，旨在减少编写特殊方法（如 `__init__()`、`__repr__()`、`__eq__()` 等）的样板代码。当你有一个类主要用于存储多个属性时，使用 `@dataclass` 装饰器可以自动为你生成这些方法。
+
+   `@dataclass` 装饰器背后的思想是，它使用类属性的类型注解来自动创建构造函数（`__init__`）和其他几个方法（如 `__repr__`、`__eq__`、`__lt__` 等）。
+
+   这是使用 `@dataclass` 的一个基础例子：
+
+   ```python
+   from dataclasses import dataclass
+   
+   @dataclass
+   class InventoryItem:
+       """Class for keeping track of an item in inventory."""
+       name: str
+       unit_price: float
+       quantity_on_hand: int = 0
+   
+       def total_cost(self) -> float:
+           return self.unit_price * self.quantity_on_hand
+   ```
+
+   在这个例子中，`InventoryItem` 类有三个属性：`name`、`unit_price` 和 `quantity_on_hand`。`@dataclass` 装饰器自动为这些属性创建了一个初始化方法，所以不需要手动写 `__init__` 方法。`quantity_on_hand` 默认值为 0，这也会被 `@dataclass` 处理。
+
+   此外，`@dataclass` 还自动为这些属性实现了一个 `__repr__` 方法，以提供一个有用的字符串表示。如果属性有相同的名称和类型，还会自动实现 `__eq__` 方法以比较两个类的实例。
+
+   除了上述的自动化方法，`@dataclass` 还提供了一些参数以供定制：
+
+   - `init`: 如果设置为 `False`，则不会生成 `__init__` 方法。
+   - `repr`: 如果设置为 `False`，则不会生成 `__repr__` 方法。
+   - `eq`: 如果设置为 `False`，则不会生成 `__eq__` 方法。
+   - `order`: 如果设置为 `True`，则会生成比较魔法方法（`__lt__`、`__le__`、`__gt__`、`__ge__`），这样实例就可以被排序。
+   - `unsafe_hash`: 如果设置为 `True`，则会生成 `__hash__` 方法。但是，如果 `eq` 为 `False` 而 `unsafe_hash` 为 `True`，则必须谨慎使用，因为这可能导致错误的行为。
+   - `frozen`: 如果设置为 `True`，则生成的类将是不可变的，尝试修改属性将会抛出异常。
+
+   `@dataclass` 还支持更高级的功能，例如内嵌的 `dataclasses.field()` 函数，它可以用来指定每个字段的默认值和其他属性。这些高级功能使得 `@dataclass` 能够处理复杂的场景，同时仍保持简洁和易用性。
+
+****
+
+## Q: 那__init__方法中，自动生成的是什么样？有些属性需要外部传值，有些不需要，那怎么约束呢
+
+当使用 `@dataclass` 装饰器时，`__init__` 方法是根据类属性定义自动生成的。所有具有默认值的属性是可选的，将会在自动生成的 `__init__` 方法中放在参数列表的末尾，作为关键字参数。没有默认值的属性是必需的，它们将会成为 `__init__` 方法的位置参数，必须在实例化对象时提供。
+
+在自动生成的 `__init__` 方法中，参数的顺序是先按照它们在类定义中出现的顺序排列必需参数（即没有默认值的参数），然后按照相同的顺序排列具有默认值的参数。
+
+例如，考虑以下 `@dataclass`：
+
+```python
+from dataclasses import dataclass
+
+@dataclass
+class MyClass:
+    a: int                 # 必需参数
+    b: str = 'default'     # 具有默认值的参数
+    c: float = 10.0        # 另一个具有默认值的参数
+```
+
+对于这个 `MyClass` 数据类，`@dataclass` 会生成类似下面的 `__init__` 方法：
+
+```python
+def __init__(self, a: int, b: str = 'default', c: float = 10.0) -> None:
+    self.a = a
+    self.b = b
+    self.c = c
+```
+
+当你创建 `MyClass` 的实例时，你必须提供 `a` 参数的值，而 `b` 和 `c` 是可选的，因为它们已经有了默认值：
+
+```python
+instance = MyClass(5)  # b 和 c 将使用默认值 'default' 和 10.0
+```
+
+如果你想要覆盖默认值，你可以按如下方式提供参数：
+
+```python
+instance = MyClass(5, 'custom_value', 20.0)  # 设置 a, b 和 c
+```
+
+如果某个字段不应由调用者设置，并且它的值应由类的其他代码计算或生成，那么可以使用 `field(init=False)` 来排除这个字段，使其不出现在自动生成的 `__init__` 方法中。
+
+例如：
+
+```python
+from dataclasses import dataclass, field
+
+@dataclass
+class MyClass:
+    a: int
+    b: str = 'default'
+    c: float = field(default=10.0, init=False)
+
+    def __post_init__(self):
+        self.c = self.calculate_c_value()
+    
+    def calculate_c_value(self):
+        # ...计算 c 的值的逻辑...
+        return 42.0
+```
+
+在这个例子中，`c` 不会出现在 `__init__` 方法的参数中，而是在对象被创建后通过 `__post_init__` 方法设置。`__post_init__` 是一个特殊方法，`@dataclass` 提供了它作为 `__init__` 方法完成后立即调用的钩子。在这个方法内，你可以执行任何需要在对象完全初始化后进行的额外初始化任务。
+
+****
+
+## Q: Decimal类的使用例题
+
+Python的 `decimal.Decimal` 类是一个用于十进制浮点运算的类，它提供了更精确的数值表示和控制，以解决二进制浮点数类型固有的精度问题。
+
+下面的代码输出不同的原因是因为在创建 `Decimal` 对象时使用的初始化值的形式不同：
+
+```python
+from decimal import Decimal
+
+# 使用浮点数初始化
+x1 = Decimal(0.000001) + Decimal(0.0000001)
+print(x1 == Decimal(0.0000011))  # 可能输出 False
+
+# 使用字符串初始化
+x2 = Decimal("0.000001") + Decimal("0.0000001")
+print(x2 == Decimal("0.0000011"))  # 输出 True
+```
+
+1. 当你使用浮点数初始化 `Decimal` 对象时，浮点数首先由Python的浮点表示处理，这个表示本身可能就有精度损失。由于浮点数是以二进制形式表示的，一些十进制小数无法精确表示为二进制浮点数。这意味着 `Decimal(0.000001)` 和 `Decimal(0.0000001)` 可能并不准确地代表这些小数值，导致精度损失。
+
+2. 当你使用字符串初始化 `Decimal` 对象时，提供的值会被精确地转换为十进制数，因为字符串精确地指定了数值。因此，`Decimal("0.000001")` 和 `Decimal("0.0000001")` 精确地表示了这些数值，没有精度损失。
+
+由于 `Decimal` 类型主要用于需要高精度的十进制运算，**建议始终使用字符串来初始化 `Decimal` 对象以避免由于浮点数精度问题导致的不精确表示**。
+
+所以，第一段代码在比较时可能会返回 `False`，因为精度损失会导致实际的数值与 `0.0000011` 不相等。而第二段代码在比较时会返回 `True`，因为使用字符串初始化能确保精度，使得相加后的数值确实等于 `0.0000011`。
+
+****
+
+### Q: 那特殊方法会在什么时刻被调用呢
+
+特殊方法是Python中的一组预定义的方法，它们通常被称为“魔术方法”，以双下划线开头和结尾（例如 `__init__`, `__str__`, 等）。这些方法被Python解释器在特定的时刻自动调用，通常是作为响应某些内置的操作或函数。这些特殊的时刻可以是以下情况之一：
+
+1. **对象创建和销毁**:
+   - `__new__(cls, [...])`: 创建一个新实例时。
+   - `__init__(self, [...])`: 实例初始化后。
+   - `__del__(self)`: 实例被销毁前（不建议使用，因为调用时机不确定）。
+
+2. **字符串/字节表示**:
+   - `__repr__(self)`: 使用 `repr()` 或在解释器中直接显示对象时。
+   - `__str__(self)`: 使用 `str()` 或 `print()` 打印对象时。
+   - `__format__(self, format_spec)`: 使用 `format()` 格式化对象时。
+   - `__bytes__(self)`: 使用 `bytes()` 转换对象为字节序列时。
+
+3. **比较操作**:
+   - `__eq__(self, other)`, `__ne__(self, other)`, `__lt__(self, other)`, 等：进行比较操作（==, !=, <, <=, >, >=）时。
+
+4. **数学运算**:
+   - `__add__(self, other)`, `__sub__(self, other)`, 等：进行数学运算（+, -, *, /, //, %, **, 等）时。
+   - `__radd__(self, other)`, `__rsub__(self, other)`, 等：反向数学运算，当左侧操作数不支持相应的运算时。
+
+5. **类型转换操作**:
+   - `__int__(self)`, `__float__(self)`, `__complex__(self)`: 使用 `int()`, `float()`, `complex()` 转换类型时。
+
+6. **容器类型操作**:
+   - `__len__(self)`: 使用 `len()` 获取容器大小时。
+   - `__getitem__(self, key)`, `__setitem__(self, key, value)`, `__delitem__(self, key)`: 分别在获取、设置或删除索引/键的值时。
+   - `__iter__(self)`, `__next__(self)`: 支持迭代和下一个元素的获取，用于for循环等。
+
+7. **属性访问**:
+   - `__getattr__(self, name)`, `__setattr__(self, name, value)`, `__delattr__(self, name)`: 获取、设置、删除属性时。
+
+8. **上下文管理器**:
+   - `__enter__(self)`, `__exit__(self, exc_type, exc_val, exc_tb)`: 使用 `with` 语句时。
+
+9. **可调用对象**:
+   - `__call__(self, [...])`: 当实例被当作函数调用时。
+
+通常，你不需要直接调用这些特殊方法。相反，它们是由其他内置操作或函数隐式调用的，你只需要了解何时它们会被触发，以及如何为自己的类实现它们来自定义类的行为。例如，你可以通过定义 `__str__` 来改变对象的打印输出，或者通过实现 `__getitem__` 来让你的对象支持索引操作。
+
+### Q: __getitem__(self, key) __getattr__(self, name)类似这种的怎么用，有没有例子
+
+当然可以。`__getitem__` 和 `__getattr__` 是两个不同的特殊方法，用于不同的情况。
+
+`__getitem__(self, key)` 方法是用来获取某个元素的，它使得对象可以使用索引操作符（即 `obj[key]`）。这在创建类似列表或字典的自定义容器时非常有用。
+
+`__getattr__(self, name)` 方法则是在访问的属性不存在时被调用，用于定义当常规属性查找（即 `obj.name`）失败时的行为。
+
+下面是两个简单的例子来说明这两个方法的使用：
+
+### 使用 `__getitem__` 的例子
+
+假设我们要创建一个简单的类来表示一系列的斐波那契数：
+
+```python
+class Fibonacci:
+    def __init__(self):
+        self.cache = {0: 0, 1: 1}
+
+    def __getitem__(self, n):
+        if n not in self.cache:
+            self.cache[n] = self[n-1] + self[n-2]
+        return self.cache[n]
+
+f = Fibonacci()
+print(f[10])  # 输出第10个斐波那契数
+```
+
+在这个例子中，当你尝试访问像 `f[10]` 这样的元素时，会调用 `__getitem__` 方法来计算结果。
+
+### 使用 `__getattr__` 的例子
+
+接下来，让我们创建一个类，当你尝试访问一个不存在的属性时，`__getattr__` 方法会提供一个默认的响应：
+
+```python
+class LazyDB:
+    def __init__(self):
+        self.exists = 5
+
+    def __getattr__(self, name):
+        value = 'Value not set'
+        setattr(self, name, value)
+        return value
+
+db = LazyDB()
+print(db.foo)  # 输出 "Value not set"，并且现在db.foo存在了
+```
+
+在这个例子中，`LazyDB` 类没有定义 `foo` 属性，但当我们尝试访问 `db.foo` 时，`__getattr__` 方法被调用，并返回了一个默认值，并且把这个值作为 `foo` 属性设置到了对象上。再次访问 `db.foo` 将会直接返回新设置的值，而不会再次调用 `__getattr__`。
+
+这两个方法都是高级特性，使得对象的行为可以非常灵活。使用它们时，应当小心，因为如果不正确地使用，可能会使类的行为变得难以理解和预测。
+
+****
+
+## Q: Python常用的封装的方法是什么？最好用注解，装饰器这种实现，而且写得少，能在项目中常用的方法
+
+在Python中，“封装”通常指的是隐藏或保护对象的状态，这样就只能通过对象提供的方法来修改这些状态，而不是直接公开访问。Python本身并不强制实施严格的封装，因为它遵循的是“我们都是成年人”的原则，但是Python提供了一些机制来帮助开发者实现封装。
+
+下面是一些常用的封装手段，包括使用属性（property）、装饰器和注解：
+
+### 1. 属性（Property）
+
+这是Python中实现封装的一种常见方式。通过使用property装饰器，可以创建只读属性或设置属性值时进行检查的属性。
+
+```python
+class Circle:
+    def __init__(self, radius):
+        self._radius = radius  # _radius是一个受保护的属性
+
+    @property
+    def radius(self):
+        return self._radius
+
+    @radius.setter
+    def radius(self, value):
+        if value >= 0:
+            self._radius = value
+        else:
+            raise ValueError("Radius cannot be negative")
+
+c = Circle(5)
+print(c.radius)  # 正常访问
+c.radius = 10    # 正常设置值
+```
+
+### 2. 数据类（Data Classes）
+
+Python 3.7引入了数据类（dataclass），这是一个用来快速创建封装数据的方法，不用写太多模板代码。使用`@dataclass`装饰器可以自动创建初始化方法（`__init__`）等。
+
+```python
+from dataclasses import dataclass
+
+@dataclass
+class InventoryItem:
+    name: str
+    unit_price: float
+    quantity_on_hand: int = 0
+
+    def total_cost(self) -> float:
+        return self.unit_price * self.quantity_on_hand
+
+item = InventoryItem("Widget", 3.50, 10)
+print(item.total_cost())  # 调用方法计算总成本
+```
+
+### 3. 类型注解（Type Annotations）
+
+类型注解在Python中是可选的，但它们可以提高代码的可读性，并且可以通过静态类型检查工具（如Mypy）来发现bug。
+
+```python
+def greeting(name: str) -> str:
+    return 'Hello ' + name
+
+print(greeting("Alice"))
+```
+
+### 4. 使用私有属性和方法
+
+可以通过命名约定（在属性或方法名称前加上单个下划线或双下划线）来指示属性或方法不应该被外部访问。
+
+```python
+class MyClass:
+    def __init__(self, value):
+        self.__private_field = value  # 双下划线表示私有属性
+
+    def __private_method(self):  # 双下划线表示私有方法
+        pass
+
+    def public_method(self):
+        return self.__private_field, self.__private_method()
+```
+
+### 5. 装饰器（Decorators）
+
+装饰器可以在不修改方法本身的情况下，增加方法的功能。它们经常用来实现横切关注点，比如日志、权限检查等。
+
+```python
+def my_decorator(func):
+    def wrapper(*args, **kwargs):
+        print("Something is happening before the function is called.")
+        result = func(*args, **kwargs)
+        print("Something is happening after the function is called.")
+        return result
+    return wrapper
+
+@my_decorator
+def say_hello(name):
+    print(f"Hello, {name}")
+
+say_hello("Alice")
+```
+
+这些机制可以根据需要组合使用，以实现所需级别的封装和其他功能。在选择适合你的项目的封装方法时，请考虑到代码的清晰性、易维护性以及团队中的约定。
+
+****
+
+## Q: 那我类中的方法名字前加两个下划线，外面的package就访问不到了吗？就相当于private？
+
+在Python中，双下划线（例如 `__private_method`）在类定义中用作方法或属性名的前缀时，会触发一个名称改写过程，通常被称为“名称修饰”（name mangling）。这个过程的主要意图是避免子类意外重写基类的方法或属性。
+
+这是一个例子：
+
+```python
+class MyClass:
+    def __init__(self):
+        self.__private_var = 42
+
+    def __private_method(self):
+        print("This is a private method.")
+
+obj = MyClass()
+```
+
+在这个例子中，`__private_var` 和 `__private_method` 都是“私有”的，因为你不能直接通过 `obj.__private_var` 或 `obj.__private_method()` 访问它们。**Python内部实际上将这些名称改写为 `_MyClass__private_var` 和 `_MyClass__private_method`，所以它们可以通过这些改写后的名称访问**，如：
+
+```python
+print(obj._MyClass__private_var)  # 这样可以访问
+obj._MyClass__private_method()    # 这样可以调用方法
+```
+
+然而，**这种名称改写并不意味着属性或方法是真正的私有，这与Java等语言中的 `private` 修饰符不同**。**Python中的私有化更多是基于一种约定**，也就是说，以双下划线开始的属性或方法不应该被外部访问。实际上，Python并没有提供一种方法来严格保证私有成员的私有性。
+
+因此，虽然双下划线提供了一定程度的封装，但这更多是通过约定和名称改写来达到的，而不是强制的。Python社区中有一句常用的话：“我们都是同意成年人，应该负责自己的行为。” 这体现了Python对待封装的哲学。
+
+****
+
+## Q: Python中这种__file__是什么，还有什么类似的，怎么用，具体例子说明？这种和类中的魔术方法有什么区别？
+
+在Python中，`__file__` 是一个预定义的全局变量，它存在于那些被导入的模块中。它包含了当前文件的路径。这对于确定文件的位置非常有用，比如，你想要加载文件或是模块所在目录下的其他资源。
+
+这里是如何使用 `__file__` 的一个例子：
+
+```python
+# 假设这是 your_module.py 文件
+
+print(__file__)
+```
+
+当你导入 `your_module`，它会打印出文件的完整路径。
+
+Python中还有很多其他的内置属性和方法，常常被称作“魔术方法”（magic methods），因为它们通常有特殊的行为。这些包括：
+
+- `__name__`：如果一个模块是被导入，`__name__` 的值是模块的名字；如果一个模块是被直接运行，`__name__` 的值是 `'__main__'`。
+- `__doc__`：定义了模块的文档字符串。
+- `__package__`：定义了模块的包名。
+
+除了这些全局变量，还有很多特殊的方法，它们以双下划线开始和结束，用于定义类的行为，比如：
+
+- `__init__(self, ...)`: 对象初始化方法。
+- `__str__(self)`: 定义对象被 `str()` 调用时的行为。
+- `__repr__(self)`: 定义对象被 `repr()` 调用时的行为。
+- `__getitem__(self, key)`: 允许对象使用索引操作符。
+- `__setattr__(self, name, value)`: 在属性赋值时被调用。
+- `__delattr__(self, name)`: 在属性被删除时调用。
+- `__call__(self, *args, **kwargs)`: 允许一个实例像函数一样被调用。
+
+“魔术方法”用于定义类的内部行为，而像 `__file__` 这样的全局变量则用于获取模块的元信息。两者都是Python的内部特性，但它们的用途和意图不同。魔术方法通常定义了关于类的操作和行为，而像 `__file__` 这样的变量则提供了关于模块本身的信息。
+
+****
+
+## Q:  @property @my_attribute.setter啥作用啊
+
+`@property` 和 `@my_attribute.setter` 是Python中的装饰器，它们用于定义属性的getter和setter方法。这使得你可以控制属性的访问和设置，同时保持简洁的语法。
+
+这里是每个装饰器的作用：
+
+1. `@property`
+   - 这是一个内置装饰器，用于将一个方法转换为“getter”方法，用于获取属性值。
+   - 当你想要在获取属性值时执行一些逻辑时（比如数据验证或懒加载等），可以使用它。
+   - 它使得你可以通过简单的属性访问语法来调用一个方法。
+
+2. `@my_attribute.setter`
+   - 这个装饰器是与`@property`配对使用的，它定义了对应属性的“setter”方法。
+   - 它允许你在设置属性值时执行一些逻辑，如类型检查或值的验证。
+   - 它让你可以控制属性赋值的过程，而不只是将值直接赋给一个变量。
+
+这是一个包含了`@property`和`@my_attribute.setter`的类的例子：
+
+```python
+class MyClass:
+    def __init__(self):
+        self._attribute = 0  # 这是一个内部属性，外部通常不直接访问它
+
+    @property
+    def attribute(self):
+        """Getter for 'attribute'."""
+        print("Getting the 'attribute' value")
+        return self._attribute  # 返回内部属性的值
+
+    @attribute.setter
+    def attribute(self, value):
+        """Setter for 'attribute'."""
+        if value < 0:
+            raise ValueError("This attribute cannot be negative")  # 值的验证
+        print("Setting the 'attribute' value")
+        self._attribute = value  # 设置内部属性的值
+
+# 使用
+obj = MyClass()
+obj.attribute = 42  # 调用setter方法
+print(obj.attribute)  # 调用getter方法，获取属性的值
+```
+
+在上面的代码中，`attribute` 属性的访问和设置都被控制了。当你尝试设置`attribute`的值时（`obj.attribute = 42`），将会调用`@attribute.setter`装饰的方法，其中包括了一段检查值是否为负的逻辑。当读取`attribute`的值时（`print(obj.attribute)`），将会调用`@property`装饰的方法，它返回了`_attribute`的值。
+
+这种方法的好处是它保持了使用属性的直观语法，同时提供了方法来封装逻辑，这是许多面向对象编程语言的标准特性。
+
+### Q: 那@property和@attribute.getter有什么不同？
+
+在Python中，`@property` 和 `@attribute.getter` 做的实际上是相同的事情，它们都是用来定义一个属性的getter方法。不过，`@property` 是用来第一次创建property属性时使用的装饰器，而 `@attribute.getter` 是在分开定义getter和setter方法时用于重新定义或者明确指出getter部分的装饰器。
+
+下面是如何使用 `@property` 装饰器：
+
+```python
+class MyClass:
+    def __init__(self):
+        self._attribute = None
+
+    @property
+    def attribute(self):
+        """这是attribute属性的getter方法。"""
+        return self._attribute
+```
+
+如果你分开定义getter和setter，可以使用 `@attribute.getter` 来明确指出getter方法，尤其是在setter方法已经定义之后：
+
+```python
+class MyClass:
+    def __init__(self):
+        self._attribute = None
+
+    def attribute(self):
+        """这是attribute属性的getter方法。"""
+        return self._attribute
+
+    # 使用.attribute.getter装饰器来明确这是getter方法
+    attribute = property(attribute)
+
+    @attribute.setter
+    def attribute(self, value):
+        """这是attribute属性的setter方法。"""
+        if value < 0:
+            raise ValueError("The value cannot be negative")
+        self._attribute = value
+
+    # 如果需要重新定义getter，可以这样做：
+    @attribute.getter
+    def attribute(self):
+        """重新定义的getter方法。"""
+        print("Getting value")
+        return self._attribute
+```
+
+在这个例子中，`attribute = property(attribute)` 语句创建了一个property，然后我们用 `@attribute.setter` 来定义setter。如果之后我们想要改变getter的行为，可以使用 `@attribute.getter` 装饰器。
+
+总之，`@property` 用于第一次创建属性的时候，而 `@attribute.getter` 主要用于后续的代码中为了清晰或者是为了修改getter方法的行为。在实际使用中，你会更常见到 `@property`，因为它更为简洁，并且如果没有特别的需要，很少会在后续的代码中单独修改getter方法。
+
+### Q: @property @my_attribute.setter怎么调用？
+
+在Python中，你不需要直接调用使用 `@property` 装饰的方法，它们会在你访问属性的时候自动被调用。同样地，你也不直接调用使用 `@attribute.setter` 装饰的方法，它们会在你给属性赋值的时候自动被调用。这两种装饰器提供了一种让属性访问看起来更像是访问简单变量的方法，同时背后可以执行复杂的逻辑。
+
+**有setter就必须有property**
+
+下面是一个例子，说明如何使用这些装饰器：
+
+```python
+class MyClass:
+    def __init__(self):
+        self._attribute = None
+
+    @property
+    def attribute(self):
+        """这是attribute属性的getter方法。"""
+        return self._attribute
+
+    @attribute.setter
+    def attribute(self, value):
+        """这是attribute属性的setter方法。"""
+        if value < 0:
+            raise ValueError("The value cannot be negative")
+        self._attribute = value
+
+# 创建一个MyClass的实例
+obj = MyClass()
+
+# 使用setter设置attribute属性
+obj.attribute = 10
+
+# 使用getter获取attribute属性
+print(obj.attribute)  # 输出: 10
+```
+
+在这段代码中，`obj.attribute = 10` 语句会调用 `attribute` 的setter方法，而 `print(obj.attribute)` 语句会调用 `attribute` 的getter方法。这些调用都是隐式的，Python解释器会根据你的操作来自动选择正确的方法。因此，你不需要也不应该直接调用由 `@property` 或 `@attribute.setter` 装饰的方法，应该像操作普通属性一样去使用它们。
+
+### Q: 那@property到底有什么用？怎么用？
+
+`@property` 装饰器在Python中是一个非常有用的功能，它允许你将一个方法转化为一个看似普通的属性。这意味着你可以像访问数据属性那样来访问这个方法，但在幕后它可以执行代码来动态计算值。这样，你就可以将一个简单的属性访问转化为一个复杂的函数调用。
+
+**`@property` 的主要用途包括：**
+
+1. **将方法表现为属性**：这样可以不通过调用方法（即不使用括号）就能获取值。它可以让对象的使用者以一种直觉的方式读取属性值，而不必知道背后是通过方法实现的。
+2. **将属性设为只读**：如果你为一个属性只定义了getter方法（使用`@property`），而没有定义setter方法，那么这个属性就是只读的。尝试设置这个属性的值将会抛出一个`AttributeError`。
+3. **控制属性访问**：即使一个属性被设置为可读写，你也可以在setter方法中添加逻辑来控制或验证设置的值。
+4. **延迟加载并计算属性**：允许属性值在每次访问时被动态计算，而非存储一个固定值。某些值可能在创建对象时不立即计算，而是在首次访问时才计算，以节省资源。
+
+以下是如何使用 `@property` 装饰器的一个基本例子：
+
+```python
+class Circle:
+    def __init__(self, radius):
+        self._radius = radius
+
+    @property
+    def radius(self):
+        """获取圆的半径"""
+        return self._radius
+
+    @radius.setter
+    def radius(self, value):
+        """设置圆的半径，附带检查确保半径是正值"""
+        if value >= 0:
+            self._radius = value
+        else:
+            raise ValueError("Radius must be non-negative")
+
+    @property
+    def diameter(self):
+        """计算并返回圆的直径"""
+        return self._radius * 2
+
+    @property
+    def area(self):
+        """计算并返回圆的面积"""
+        return 3.141592653589793 * self._radius * self._radius
+```
+
+在这个例子中，`radius` 是一个可以获取和设置的属性，`diameter` 和 `area` 是基于 `radius` 计算得出的只读属性。注意 `@property` 装饰器定义了一个getter，紧接着 `@radius.setter` 定义了一个setter。你可以像这样使用这个类：
+
+```python
+c = Circle(5)
+print(c.radius)  # 输出: 5
+print(c.diameter)  # 输出: 10
+print(c.area)  # 输出: 78.53981633974483
+
+c.radius = 10  # 设置新的半径
+print(c.radius)  # 输出: 10
+print(c.diameter)  # 输出: 20
+```
+
+如果你尝试设置一个负的半径值，setter 方法会抛出 `ValueError` 异常。这就是 `@property` 装饰器的强大之处，它允许你将数据隐藏在简单的属性访问之后，同时提供验证或者自动计算。
+
+### Q: 那给一个受保护的成员，给上@xxx.setter和@property有什么意义吗？这不和没设置一样吗
+
+使用`@property`和`@xxx.setter`装饰器对受保护（使用单下划线 `_`）或私有（使用双下划线 `__`）属性进行封装，可以提供多个优点，即使这些属性已经通过下划线的命名约定进行了隐式的访问控制。这里是一些使用这些装饰器的理由：
+
+### 额外的验证或处理
+
+通过getter和setter方法，你可以在属性被访问或修改时执行额外的验证或处理，而不仅仅是暴露一个直接的属性访问。
+
+```python
+class MyClass:
+    def __init__(self):
+        self._attribute = None
+
+    @property
+    def attribute(self):
+        # 可以在这里添加读取属性之前需要的代码
+        return self._attribute
+
+    @attribute.setter
+    def attribute(self, value):
+        # 这里可以添加验证或处理代码
+        if value < 0:
+            raise ValueError("Value cannot be negative")
+        self._attribute = value
+```
+
+### 保持向后兼容性
+
+如果将来需要更改属性的行为或添加额外的逻辑，使用getter和setter方法可以避免更改类的公共接口。这意味着已有的代码不需要因为属性的更改而被修改。
+
+### 控制属性的读写权限
+
+如果你只实现getter而不实现setter，那么这个属性就变成了只读的。这在某些情况下非常有用，比如当属性的值依赖于类的状态，并且不应该被外部修改时。
+
+### 文档和注释
+
+在getter和setter方法上添加文档和注释，可以提供关于属性如何被使用和期望的值的信息。
+
+### 惰性计算
+
+你可以用属性装饰器来实现惰性计算，这意味着只有在实际需要属性值时才计算它。这可以提高效率，特别是计算成本高昂的属性。
+
+总的来说，使用`@property`和配套的setter方法提供了一种更精细化的控制属性访问和赋值行为的方式。即使是受保护或私有属性，使用这些装饰器也允许在不牺牲封装的情况下增加灵活性和控制力。
+
+****
+
+## Q: 详细介绍一下eval方法用处
+
+`eval()` 是 Python 中的一个内置函数，用于计算字符串表达式，并返回表达式的值。换言之，你可以将一个字符串形式的 Python 表达式传递给 `eval()`，它会执行这个表达式并返回计算结果。
+
+### 使用 `eval()`
+
+以下是 `eval()` 的一个基本例子：
+
+```python
+x = 1
+expression = 'x + 1'
+result = eval(expression)
+print(result)  # 输出 2
+```
+
+在这个例子中，`expression` 字符串包含了一个 Python 表达式 `'x + 1'`。使用 `eval()` 函数执行这个表达式时，它会计算表达式并返回结果 `2`。
+
+### 参数
+
+`eval()` 可以接受三个参数：
+
+1. **expression**：一个字符串形式的 Python 表达式。
+2. **globals**（可选）：字典形式的全局变量。
+3. **locals**（可选）：字典形式的局部变量。
+
+如果不提供 `globals` 和 `locals`，`eval()` 会在当前作用域中执行表达式。
+
+### 安全性问题
+
+虽然 `eval()` 是一个强大的功能，但它也有着潜在的安全风险。如果你使用 `eval()` 执行用户提供的表达式，这可能会导致代码注入攻击，因为恶意的表达式可能会被执行。例如：
+
+```python
+eval('os.system("rm -rf /")')  # 非常危险，永远不要这样做！
+```
+
+在这个极端的例子中，如果 `os` 模块在作用域中，这将执行系统命令来删除文件，这显然是非常危险的。
+
+### 使用场景
+
+考虑到安全问题，`eval()` 最好只在以下情况下使用：
+
+- 当你控制输入的字符串，并确保它不包含恶意代码时。
+- 在一个受限制的环境中，例如使用 `globals` 和 `locals` 参数限制可用的变量和函数。
+- 在需要动态执行 Python 表达式的内部代码中。
+
+### 替代方案
+
+对于许多使用 `eval()` 的场景，有时候可以找到更安全的替代方案。例如：
+
+- 如果你只是需要动态地访问对象的属性，可以使用 `getattr()`。
+- 如果你需要解析简单的数学表达式，可能可以使用第三方库，如 `asteval` 或者 `simpleeval`，它们提供了更安全的表达式求值环境。
+
+总结一下，`eval()` 是一个功能强大但使用需谨慎的工具。在考虑使用它的时候，需要特别注意代码的安全性和限制执行环境。
+
+****
+
+## Q: 介绍一下下面代码是什么？然后介绍相关知识，比如迭代器、next这些怎么用？
+
+这段代码定义了一个`Trange`类，它模仿了Python标准库中的`range`函数的部分行为。它是一个可迭代的对象，这意味着它实现了迭代器协议。在Python中，迭代器协议由两个方法组成：`__iter__()`和`__next__()`。
+
+1. `__iter__(self)`方法返回迭代器对象本身。在本例中，`Trange`实例自己就是迭代器。
+2. `__next__(self)`方法返回迭代器的下一个元素。如果所有元素都已经迭代完毕，则需要抛出`StopIteration`异常以终止迭代。
+
+具体到`Trange`类：
+
+- 当创建一个`Trange`实例时，它接受一个参数`n`，这个参数指定了序列的上限。
+- `__iter__()`方法返回了迭代器对象自身（即`self`）。
+- `__next__()`方法检查当前的索引`i`是否小于上限`n`。如果是，则返回当前的索引值，并将`i`加1；如果不是，则抛出`StopIteration`异常来通知循环停止。
+
+当使用`list(y)`时，`list()`函数内部会调用`y`对象的`__iter__()`方法来获取迭代器，然后不断调用这个迭代器的`__next__()`方法来获取值，直到捕获到`StopIteration`异常。
+
+```python
+y = Trange(5)
+print(list(y))  # 输出 [0, 1, 2, 3, 4]
+print(list(y))  # 输出 []
+```
+
+第一次调用`print(list(y))`时，从`y`开始，通过不断调用`__next__()`方法，直到抛出`StopIteration`异常，得到一个包含了0到4的列表。
+
+但是，当第二次调用`print(list(y))`时，输出是空列表`[]`。这是因为`Trange`的实例`y`在第一次迭代后已经达到了它的上限`n`，它的`i`成员已经是5，所以`__next__()`方法直接抛出了`StopIteration`异常，没有更多元素可以迭代。
+
+要让`Trange`类的对象能够被重复迭代，你需要在`__iter__()`方法中重置`self.i`到初始状态，或者创建一个新的独立的迭代器对象。
+
+关于迭代器和`next`函数的用法：
+
+- 迭代器是实现了`__iter__()`和`__next__()`方法的对象。**`__iter__()`返回迭代器自身，`__next__()`返回序列的下一个元素。**
+- `next()`函数用于手动获取迭代器的下一个元素。如果迭代器耗尽，则抛出`StopIteration`异常。你可以直接在迭代器上调用`next()`函数，例如`next(y)`，这将返回`Trange`实例的下一个值。
+
+### Q: 那怎么在__iter__()方法中重置self.i到初始状态，或者创建一个新的独立的迭代器对象？
+
+为了让`Trange`类的实例能够支持多次迭代（即每次调用`iter()`时都从头开始），我们可以修改`__iter__()`方法。有两种方法可以实现这个目的：
+
+### 方法1: 重置索引
+在`__iter__()`方法中，我们可以将`self.i`重置为0。这样，每次开始迭代时，它都会从头开始。
+
+```python
+class Trange:
+    def __init__(self, n) -> None:
+        self.n = n
+
+    def __iter__(self):
+        self.i = 0  # 重置索引
+        return self
+
+    def __next__(self):
+        if self.i < self.n:
+            i = self.i
+            self.i += 1
+            return i
+        else:
+            raise StopIteration()
+```
+
+### 方法2: 创建一个新的独立迭代器对象
+另一种方法是创建一个新的迭代器类，这样`__iter__()`可以返回一个全新的迭代器对象，它有自己的独立状态。
+
+```python
+class TrangeIterator:
+    def __init__(self, n):
+        self.i = 0
+        self.n = n
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        if self.i < self.n:
+            i = self.i
+            self.i += 1
+            return i
+        else:
+            raise StopIteration()
+
+class Trange:
+    def __init__(self, n) -> None:
+        self.n = n
+
+    def __iter__(self):
+        return TrangeIterator(self.n)  # 返回一个新的迭代器对象
+```
+
+这样，每次你使用`iter()`函数或者在一个循环中使用`Trange`实例时，你都会得到一个全新的迭代器对象，它会独立地从0计数到`n-1`。
+
+两种方法的选择取决于你的具体需求。如果`Trange`实例本身不会存储除了`n`以外的其他状态，或者你不需要在迭代过程中保持其它状态信息，那么第一种方法会更简单一些。如果`Trange`实例有更多的状态需要管理，并且你想在多次迭代中保持这些状态不变，那么第二种方法会更合适。
+
+****
+
+## Q: Python属性名前，加一个下划线和加两个下划线有啥区别？为什么要这么做
+
+在Python中，属性和方法名称前的下划线有特定的含义，这是按照Python的命名约定来的。这些约定并不是语言的强制性规则，但遵循它们可以让代码更容易被其他Python程序员理解。
+
+### 单下划线 (`_`)
+
+在属性或方法名前加上一个下划线表示这是一个受保护的成员，它告诉其他程序员：“这是一个内部变量，除非你知道自己在做什么，否则不要直接访问它”。这只是一个约定，Python并不会真正阻止你在类的外部访问这样的属性。
+
+```python
+class MyClass:
+    def __init__(self):
+        self._protected_attribute = 42
+
+    def _protected_method(self):
+        pass
+```
+
+### 双下划线 (`__`)
+
+在属性或方法名前加上两个下划线表示这是一个私有成员，这在Python中有一些特殊的行为。Python中的“私有化”是通过名称改写（name mangling）来实现的。Python解释器会将双下划线开头的名称重写为`_ClassName__AttributeName`，这样在类的外部就无法直接访问它们了。
+
+```python
+class MyClass:
+    def __init__(self):
+        self.__private_attribute = 42
+
+    def __private_method(self):
+        pass
+```
+
+在这个例子中，`__private_attribute`和`__private_method`在外部访问时需要使用`_MyClass__private_attribute`和`_MyClass__private_method`，否则会遇到`AttributeError`。
+
+### 为什么要这么做
+
+使用单下划线和双下划线的约定可以帮助定义类的接口。通过这些约定，类的开发者可以更清晰地表明哪些属性和方法是应该公开的（没有下划线），哪些是只在类内部和子类中使用的（单下划线），哪些是意图完全隐藏的，不希望在类的外部使用，甚至也不希望被子类访问（双下划线）。
+
+这些约定有助于实现封装，在面向对象的编程中封装是一个核心概念。封装可以让代码的维护和重构更加容易，同时也提供了一种将接口与实现分离的方式，允许开发者在不破坏依赖它的代码的情况下更改类的内部实现。
+
+****
+
+## Q: object父类是什么？
+
+在 Python 中，`object` 类是所有类的最终父类。如果一个类没有显式地指定它继承自哪个类，那么默认它就继承自 `object`。这就是为什么所有的 Python 类都有像 `__str__` 和 `__repr__` 这样的方法，即使你没有在你的类定义中明确地添加它们，因为这些方法是从 `object` 类继承来的。
+
+举个例子：
+
+```python
+class MyCustomClass:
+    pass
+
+# 即使没有明确指定，MyCustomClass 也隐式地继承自 object 类
+```
+
+当你创建一个新的类 `MyCustomClass` 时，它自动地继承了 `object` 的所有方法和属性。这是因为在 Python 的继承模型中，`object` 类位于类层次结构的顶端。
+
+在 Python 3.x 版本中，即使你不写出 `(object)`，**每个类都隐式地继承自 `object`。**这意味着下面两个类定义是等价的：
+
+```python
+class MyClass:
+    pass
+
+class MyClass(object):
+    pass
+```
+
+在 Python 2.x 版本中，情况稍微有点不同，存在老式类（不继承自 `object`）和新式类（显式地继承自 `object`）。**但是从 Python 3.x 开始，所有的类都是新式类，都隐式地继承自 `object`。**
+
+****
+
+## Q: 为什么调用issubclass(type, object)是True啊
+
+在Python中，`issubclass(type, object)` 返回 `True` 是因为 `type` 本身也是一个类，它是自身的实例，同时也继承自 `object`。这反映了Python的一致性——即使是构建类的元类`type`也不例外。
+
+让我们来详细解释一下这个关系：
+
+1. **`object`是所有类的基类**：这意味着所有的类，包括`type`自身，都继承自`object`。所以，`issubclass(type, object)` 返回 `True`。
+
+2. **`type`是一个元类**：它是创建所有类（包括它自己）的“东西”。元类本身也是一个类，所以`type`也是一个实例，它是自己的实例。这听起来可能有点递归，但它就是Python对象模型的工作方式。
+
+3. **`type`继承自`object`**：因为所有类都继承自`object`，即使是`type`。
+
+这样的设计允许Python具有极高的灵活性和动态性。通过使用元类，您可以在创建类时自定义类的创建过程。但是，在日常的Python编程中，大多数开发者很少需要直接与元类打交道。
+
+****
+
+## Q: 那元类和基类什么关系和区别？
+
+元类（Metaclass）和基类（Base class）是面向对象编程中的两个不同的概念。它们在类的层次结构和对象的创建过程中扮演着不同的角色。
+
+### 基类 (Base class)
+
+基类是一个普通的类，它定义了派生类（子类）可以继承的方法和属性。基类允许你定义一个通用的模板，然后你可以通过继承来创建更专用的子类。
+
+例如，你可能有一个名为 `Vehicle` 的基类，它具有 `drive` 和 `stop` 方法。然后你可以创建 `Car` 和 `Bike` 类作为 `Vehicle` 的子类，它们继承 `Vehicle` 的方法和属性，并且可以添加或覆盖这些方法来实现更具体的功能。
+
+### 元类 (Metaclass)
+
+元类更为抽象，它实际上是类的类。这意味着，就像类定义了如何创建对象的蓝图一样，元类定义了如何创建类的蓝图。在Python中，`type` 是大多数类的默认元类，它实际上控制着类的创建过程。
+
+当你定义一个新的类时，Python会使用你指定的元类来创建这个类。如果你没有指定一个元类，Python将使用默认的元类 `type`。你可以定义自己的元类（这是一个非常高级的用法），它继承自 `type`，并可以改变类的创建方式。
+
+元类允许你在创建类时进行干预，这意味着你可以在类实际创建之前或之后添加额外的逻辑。
+
+### 区别
+
+- **定义层面**：**基类定义了对象的行为，而元类定义了类的行为。**
+- **使用场景**：**基类通常用于对象的继承和多态性，元类用于创建和修改类本身。**
+- **频率**：基类的使用非常频繁，几乎所有面向对象的程序中都会用到；元类则使用得少得多，只有在你需要对类的创建过程进行控制时才会用到。
+
+在绝大多数情况下，作为一个Python开发者，你会与基类打交道而不是元类。然而，了解元类的概念对于完全理解Python的对象模型非常重要。
+
+****
+
+## Q: Python中的多重继承是什么？
+
+Python中的多重继承是指一个类可以同时继承多个父类的功能。这意味着子类可以继承其所有父类的属性和方法。这允许在类之间进行更复杂的关系和功能共享，**但同时也增加了设计的复杂性和可能的混乱。**
+
+下面是一个简单的多重继承的例子：
+
+```python
+class Father:
+    def __init__(self):
+        self.surname = "Smith"
+    def printSurname(self):
+        print(self.surname)
+
+class Mother:
+    def __init__(self):
+        self.name = "Jane"
+    def printName(self):
+        print(self.name)
+
+class Child(Father, Mother):
+    def __init__(self):
+        Father.__init__(self)
+        Mother.__init__(self)
+        self.firstname = "Bob"
+    def printFirstName(self):
+        print(self.firstname)
+
+child = Child()
+child.printSurname()  # Prints "Smith"
+child.printName()     # Prints "Jane"
+child.printFirstName()  # Prints "Bob"
+```
+
+在这个例子中，`Child` 类同时继承了 `Father` 和 `Mother` 类。子类 `Child` 能够访问父类 `Father` 的 `surname` 属性和 `printSurname` 方法，同时也能够访问父类 `Mother` 的 `name` 属性和 `printName` 方法。
+
+Python解决多重继承的方法冲突和顺序问题是通过一个称为“C3线性化”的算法来实现的。这个算法用于创建一个类的方法解析顺序（Method Resolution Order，MRO），当你调用一个方法时，Python会按照这个顺序去查找这个方法，直到找到为止。
+
+可以使用`__mro__`属性或`mro()`方法查看类的方法解析顺序：
+
+```python
+print(Child.__mro__)
+# 或者
+print(Child.mro())
+```
+
+这会给你展示Python决定方法调用顺序的具体列表。这个顺序很重要，因为如果多个父类有同名的方法，Python会使用这个MRO顺序来决定调用哪个。
+
+**如果多个父类中有同名的方法，则会先在前面的父类中寻找，然后再去父类的父类找，找过的不再找**
+
+多重继承需要谨慎使用，因为它可能会导致代码难以理解和维护。如果各个父类之间存在不兼容的方法，可能会产生难以预测的结果。
+
+****
+
+## Q: Python的多态是什么？鸭子模型吗？和Java的多态有什么区别和联系？
+
+Python 的多态性和 Java 的多态性都是面向对象编程中的基本概念，它们都描述了对象能够以多种形式呈现的能力。不过，由于两种语言在类型系统和继承机制上的不同，它们实现多态的方式也有所不同。
+
+### Python的多态性
+
+Python 通常被称为“鸭子类型”的语言。在 Python 中，如果一个对象执行了必需的方法或属性，那么它就可以被用在任何期望这种方法或属性的场景中。这就是著名的“鸭子测试”：如果它看起来像鸭子，游泳像鸭子，叫声像鸭子，那么它就可以被当作鸭子。
+
+Python 的多态性是动态的，不需要通过继承或者接口来实现。任何对象都可以用于任何期望具有相同方法和属性的其他对象的上下文中，而无需关心对象的具体类型。这种行为通常称为“**隐式多态**”，因为它不要求在代码中明确指定接口或基类。
+
+```python
+class Duck:
+    def quack(self):
+        print("Quack!")
+
+class Person:
+    def quack(self):
+        print("The person imitates a duck.")
+
+def make_it_quack(duck):
+    duck.quack()
+
+duck = Duck()
+person = Person()
+
+make_it_quack(duck)  # 输出: Quack!
+make_it_quack(person)  # 输出: The person imitates a duck.
+```
+
+在上面的例子中，`make_it_quack` 函数可以接受任何实现了 `quack` 方法的对象，而不在乎对象的类型。
+
+### Java的多态性
+
+相比之下，Java 的多态性是静态类型语言中的多态性。Java 中的多态基于继承和接口。一个类的对象引用可以指向该类的任何子类的实例，这允许一个类的引用在运行时可以指向多种实际类型的行为，这就是所谓的“显式多态”。
+
+在 Java 中，一个类必须继承另一个类或实现一个接口，并且重写相应的方法，才能实现多态性。这意味着编译器可以进行类型检查，并确保只有正确的对象类型才能用在给定的上下文中。
+
+### 区别和联系
+
+- **类型系统**：**Python 是动态类型语言，对象的类型在运行时才被检查。Java 是静态类型语言，对象的类型在编译时就确定了。**
+- **隐式与显式**：**Python 通过“鸭子类型”隐式支持多态性，Java 通过继承和接口显式支持多态性。**
+- **继承与接口**：在 Java 中，多态性通常要求有一个共同的基类或接口，而在 Python 中，只要对象实现了相应的方法，它就可以用在任何期望该方法的地方。
+
+尽管两者在技术上实现多态的方式不同，但它们的根本目的是相同的：允许不同类型的对象被相同的接口或基类所引用，而具体的实现细节可以不同，这样就提高了代码的灵活性和可重用性。
+
+****
+
+## Q: 为什么函数中有__len__，就可以调用len函数，这是怎么转换的？
+
+在 Python 中，`len()` 函数的工作原理是调用对象的 `__len__()` 特殊方法。这是 Python 数据模型的一部分，它允许对象通过定义一套预定义的特殊方法（也被称为魔术方法或者 dunder 方法，因为它们都有双下划线前后缀）来钩入内置行为。
+
+当你对一个对象使用 `len()` 函数时，Python 解释器会自动调用该对象的 `__len__()` 方法。如果对象没有定义 `__len__()` 方法，那么尝试调用 `len()` 会引发一个 `TypeError`。
+
+下面是一个如何在自定义类中实现 `__len__()` 方法的例子：
+
+```python
+class MyCollection:
+    def __init__(self):
+        self.items = []
+
+    def add_item(self, item):
+        self.items.append(item)
+
+    def __len__(self):
+        return len(self.items)
+
+my_collection = MyCollection()
+my_collection.add_item('item1')
+my_collection.add_item('item2')
+
+print(len(my_collection))  # 输出: 2
+```
+
+在上面的代码中，`MyCollection` 类实现了 `__len__()` 方法，该方法返回集合中元素的数量。因此，可以直接在 `MyCollection` 的实例上调用 `len()` 函数，它将返回 `__len__()` 方法的结果。
+
+Python 的数据模型允许我们通过实现这些特殊方法，利用很多内置功能和语法，使得自定义对象可以像内置对象一样自然地表现。
+
+### Q: 也就是相当于使用了my_collection.__len__()？那为什么会有__len__这种方法呢？直接写个len()方法不行吗？
+
+在 Python 中，`__len__()` 方法是类的一个特殊方法，它的存在遵循 Python 数据模型的约定。Python 数据模型预定义了一系列特殊方法名，这些方法名有特定的语义和调用时机。通过实现这些特殊方法，用户自定义的对象可以模拟内置类型的行为，从而与 Python 的核心语言特性和内置类型无缝地集成。
+
+这种设计方式有几个优点：
+
+1. **一致性**：所有的内置类型和用户定义的类型都使用相同的方法名来支持相同的操作。例如，不仅列表和元组支持 `len()` 函数，用户定义的容器类也可以支持。
+
+2. **抽象**：特殊方法提供了一种抽象机制，允许 Python 解释器查询对象的某些属性，而无需知道对象的具体类型。例如，解释器可以通过 `__len__()` 查询任何对象的长度。
+
+3. **易用性**：这允许用户定义的类型利用 Python 的内置语法和函数。例如，`__len__()` 允许对象使用内置的 `len()` 函数，而 `__getitem__()` 允许对象支持索引和迭代等。
+
+4. **多态**：因为内置函数和操作符（如 `len()` 或 `[]`）会调用这些特殊方法，所以不同类型的对象能以一种统一的方式响应相同的操作，这体现了多态的概念。
+
+直接在类中定义一个名为 `len()` 的方法也是可能的，但这样做不符合 Python 的约定，而且也不能让你的类实例直接利用内置的 `len()` 函数。内置的 `len()` 函数被设计为调用对象的 `__len__()` 方法，这就是为什么需要遵守这个约定的原因。**如果你定义了一个 `len()` 方法，你需要显式地调用 `my_object.len()`，这与 Python 的内置语法不一致，而且会减少代码的可读性和可维护性。**
+
+### Q: 也就是定义了__len__，就能隐式的调用len函数？
+
+是的，定义了 `__len__` 方法的对象可以使用 Python 的**内置函数 `len()` 来隐式地调用它**。这是一种利用 Python 数据模型的行为，允许对象以一种更符合 Python 风格的方式来表现。这样，你就可以像对待内置容器类型（如列表或元组）那样，对待你自己的类实例。
+
+例如：
+
+```python
+class MyCollection:
+    def __init__(self):
+        self.items = []
+
+    def add(self, item):
+        self.items.append(item)
+
+    def __len__(self):
+        return len(self.items)
+
+my_col = MyCollection()
+my_col.add('item1')
+my_col.add('item2')
+
+print(len(my_col))  # 调用 my_col 的 __len__ 方法
+```
+
+**在这个例子中，`len(my_col)` 实际上调用的是 `my_col.__len__()`。**这是 Python 类型系统的一个强大特性，它提供了一致的接口来对待所有的序列和容器，无论它们是内置类型还是用户定义的类型。
+
+****
+
+## Q: 类方法是什么？为什么要用@classmethod修饰？不修饰会怎么样？
+
+类方法是一种方法，它不是作用于类的实例，而是作用于类本身。为了创建一个类方法，你需要使用 `@classmethod` 装饰器。这个装饰器是 Python 的内置装饰器之一，用于修改方法的调用方式，使得方法不需要通过一个类的实例就可以被调用。
+
+这里有几点需要注意：
+
+1. 类方法的第一个参数是类本身，通常命名为 `cls`，而不是实例方法中的 `self`。
+2. 类方法可以通过类直接调用，也可以通过类的一个实例调用，但无论如何，传递给方法的第一个参数都是类。
+3. 类方法经常用于定义工厂方法（创建类实例的方法），或者是一些影响整个类而非单个实例的方法。
+
+如果你不使用 `@classmethod` 装饰器，方法会被视为一个普通的实例方法，它的第一个参数 `self` 会指向类的一个实例，而不是类本身。
+
+举个例子：
+
+```python
+class MyClass:
+    @classmethod
+    def the_class_method(cls):
+        print(f"This is a class method on {cls}.")
+
+    def the_instance_method(self):
+        print(f"This is an instance method on {self}.")
+```
+
+使用 `@classmethod` 的效果：
+
+```python
+MyClass.the_class_method()  # 正确: 直接使用类名调用类方法
+my_instance = MyClass()
+my_instance.the_class_method()  # 也可以通过实例调用，但它仍然是类方法
+```
+
+如果你去掉 `@classmethod`：
+
+```python
+class MyClass:
+    def the_class_method(cls):
+        print(f"This is a class method on {cls}.")
+
+MyClass.the_class_method()  # 这会出错，因为它现在是一个实例方法，需要一个self参数
+```
+
+在这种情况下，你将无法直接使用类名来调用 `the_class_method`，因为没有实例来提供 `self` 参数。这样的调用会引发 `TypeError`，因为 Python 期望你提供一个 `MyClass` 的实例作为第一个参数。
+
+****
+
+## Q: 那静态方法呢？
+
+静态方法（Static Method）在Python中是使用 `@staticmethod` 装饰器来定义的。它们既不需要类实例的引用，也不需要类本身的引用。**静态方法基本上是一个跟类放在一起的普通函数**，它不会自动传递实例或类引用作为第一个参数。
+
+这意味着，静态方法既不能访问类的属性（除非通过硬编码的类名），也不能访问实例的属性。
+
+静态方法的一个常见用途是作为一个辅助函数，当你希望在类的命名空间内包含一个功能相关的函数，但这个函数又不需要访问类或实例的任何属性时。
+
+下面是一个简单的例子来说明静态方法：
+
+```python
+class MyClass:
+    @staticmethod
+    def the_static_method(arg1, arg2):
+        print(f"This is a static method. Arg1: {arg1}, Arg2: {arg2}")
+
+    @classmethod
+    def the_class_method(cls):
+        print(f"This is a class method of {cls}.")
+
+    def the_instance_method(self):
+        print(f"This is an instance method of {self}.")
+```
+
+使用静态方法：
+
+```python
+MyClass.the_static_method(1, 2)  # 正确: 直接使用类名调用静态方法
+my_instance = MyClass()
+my_instance.the_static_method(1, 2)  # 也可以通过实例调用，但它仍然是静态方法
+```
+
+在上面的例子中，`the_static_method` 不需要 `self` 或 `cls` 作为参数，**它就像是在类定义中的独立函数，可以通过类名直接调用，也可以通过类的实例调用。不管怎样，它与类的实例化状态无关。**
+
+****
+
+## Q: Python的对象回收机制是什么？del a 和 a的__del__函数，和垃圾回收有关系吗？
+
+Python的**垃圾回收机制主要是基于引用计数**的，也就是说，一个对象的内存会在其没有任何引用时被释放。除了引用计数，Python还有一个循环垃圾收集器来检测并回收循环引用中的对象。
+
+### `del` 语句
+使用 `del` 语句可以删除一个对象的引用，例如 `del a` 会删除变量 `a` 对象的引用。一旦对象的引用计数降到0，Python就会自动调用其析构方法 `__del__` 并回收这块内存。然而，即使在调用了 `del` 之后，只要对象的引用计数不为0（例如，如果有其他变量仍然引用该对象），对象就不会被立即销毁。
+
+### `__del__` 方法
+`__del__` 是对象的一个特殊方法，它在对象即将被销毁时被调用。它是对象生命周期的一部分，可以用来执行一些清理工作，比如关闭文件或网络连接。然而，依赖 `__del__` 方法的执行并不是一个好的做法，因为它的调用时机不确定（取决于垃圾回收器何时运行）。
+
+### 垃圾回收
+尽管 `del` 和 `__del__` 与对象的销毁有关，它们**和垃圾回收不是完全一回事**。垃圾回收是Python解释器的一部分，它用来查找并回收不再被访问的对象占用的内存。Python中主要的垃圾回收实现是引用计数，但为了解决引用计数无法处理的循环引用问题，Python还使用了一个名为“代代收集”的算法（Generational Garbage Collection）。
+
+总的来说：
+
+- `del a` 会删除对对象的一个引用，可能导致对象的引用计数为0，从而触发垃圾回收。
+- `__del__` 方法会在对象即将被销毁时被调用，可以用于清理资源。
+- 垃圾回收是Python内存管理的一部分，不只是通过 `del` 或 `__del__` 触发，还有自动的引用计数和循环检测机制。
+
+### Q:  del a 会删除变量 a 对象的引用什么意思？是删除a，还是a指向的对象？
+
+**`del a` 这个语句的作用是删除变量 `a` 本身，而不是删除 `a` 指向的对象**。具体来说，它会从当前的作用域中移除对应的名称 `a`，使得通过这个名称无法再访问对象。然而，只有当这个对象的引用计数变为0时，即没有任何变量或者数据结构引用它时，Python的垃圾回收器才会真正删除该对象，释放其占用的内存。
+
+这意味着如果有其他变量引用了 `a` 所指向的对象，那么即使执行了 `del a`，该对象也不会被立即销毁。只有当所有引用都被删除，对象的引用计数降到0时，Python的垃圾回收器才会真正回收这个对象。
+
+下面是一个例子来说明这一点：
+
+```python
+a = [1, 2, 3]  # 创建一个列表对象，并让变量a引用它
+b = a  # 让变量b也引用这个列表对象
+
+del a  # 删除变量a，但是对象[1, 2, 3]的引用计数仍然为1（因为变量b仍然引用它）
+# a 此时已经不能再使用，但是因为 b 还在引用那个列表，所以列表对象不会被销毁
+
+print(b)  # 依然可以通过变量b输出列表：[1, 2, 3]
+```
+
+在这个例子中，`del a` 删除了变量 `a` 的引用，但是因为 `b` 仍然引用同一个列表对象，所以该对象的引用计数没有降到0，对象也就没有被回收。只有当我们同时删除了 `b`（例如，执行 `del b`）后，对象的引用计数才会变为0，之后对象才可能被垃圾回收器回收。
+
+****
+
+## Q: for idx, software_name in enumerate(software_list, start=2):  # 开始索引为2，因为1是表头。不太明白这个代码，那列表怎么遍历呢，start=2不就跳过列表前面的元素了吗
+
+我很抱歉造成了混淆，让我来澄清一下。
+
+**`enumerate` 函数用于同时获得列表的索引和值**。参数 `start=2` 指定了索引计数的开始值，并不会影响列表中元素的遍历，列表的所有元素仍然会被遍历。索引值从2开始是为了让Excel文件中的写入操作从第二行开始，因为第一行被用作表头。
+
+这是 `enumerate` 函数的基本用法:
+
+```python
+for idx, value in enumerate(some_list, start=2):
+    print(f"Index: {idx}, Value: {value}")
+```
+
+如果 `some_list` 是 `['a', 'b', 'c']`，上面的代码会打印:
+
+```
+Index: 2, Value: a
+Index: 3, Value: b
+Index: 4, Value: c
+```
+
+在上下文中使用 `enumerate` 时，我们通常是为了从Excel的第二行开始写入，这样第一行就可以被留给表头。
+
+所以，当我们写入Excel时：
+
+```python
+for idx, software_name in enumerate(software_list, start=2):
+    ws[f'A{idx}'] = software_name
+```
+
+如果 `software_list` 是 `['software1', 'software2', 'software3']`，它会将 `software1` 放入A2单元格，`software2` 放入A3单元格，`software3` 放入A4单元格，依此类推。这样，A1单元格就可以单独设置为表头了。
